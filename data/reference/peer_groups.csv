@@ -1,0 +1,30 @@
+business_type,peer_group
+Bank,Banks
+NBFC,Non-Banking Financials
+Financial Services,Non-Banking Financials
+Diversified Financial Services,Non-Banking Financials
+Life Insurance,Life Insurance
+IT Services,IT Services
+Pharmaceuticals,Pharmaceuticals
+Hospitals,Hospitals & Healthcare Services
+Automobiles,Automobiles
+FMCG,FMCG & Consumer Staples
+Paints,Consumer Products
+Consumer Products,Consumer Products
+Retail,Consumer Retail
+Internet / Consumer Services,Consumer Services & Platforms
+Telecom,Telecommunication
+Airline,Transportation
+Ports & Logistics,Transportation & Logistics
+Steel,Metals
+Non-Ferrous Metals,Metals
+Diversified Materials,Materials
+Cement,Construction Materials
+Coal,Energy
+Oil & Gas,Energy
+Integrated Energy,Energy
+Power Generation,Utilities - Power
+Power Transmission,Utilities - Power
+Engineering & Construction,Infrastructure & Engineering
+Conglomerate / Infrastructure,Infrastructure & Engineering
+Defence Electronics,Capital Goods & Defence

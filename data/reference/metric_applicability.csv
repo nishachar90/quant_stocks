@@ -1,0 +1,203 @@
+business_type,metric,treatment
+Bank,roe,primary
+Bank,revenue_growth,primary
+Bank,net_profit_margin,secondary
+Bank,operating_margin,exclude
+Bank,debt_to_equity,exclude
+Bank,free_cash_flow,exclude
+
+NBFC,roe,primary
+NBFC,revenue_growth,primary
+NBFC,net_profit_margin,secondary
+NBFC,operating_margin,exclude
+NBFC,debt_to_equity,special
+NBFC,free_cash_flow,exclude
+
+Life Insurance,roe,primary
+Life Insurance,revenue_growth,primary
+Life Insurance,net_profit_margin,secondary
+Life Insurance,operating_margin,exclude
+Life Insurance,debt_to_equity,exclude
+Life Insurance,free_cash_flow,exclude
+
+Diversified Financial Services,roe,primary
+Diversified Financial Services,revenue_growth,primary
+Diversified Financial Services,net_profit_margin,secondary
+Diversified Financial Services,operating_margin,exclude
+Diversified Financial Services,debt_to_equity,special
+Diversified Financial Services,free_cash_flow,exclude
+
+Financial Services,roe,primary
+Financial Services,revenue_growth,primary
+Financial Services,net_profit_margin,secondary
+Financial Services,operating_margin,exclude
+Financial Services,debt_to_equity,special
+Financial Services,free_cash_flow,exclude
+
+IT Services,roe,primary
+IT Services,revenue_growth,primary
+IT Services,net_profit_margin,primary
+IT Services,operating_margin,primary
+IT Services,debt_to_equity,secondary
+IT Services,free_cash_flow,primary
+
+Pharmaceuticals,roe,primary
+Pharmaceuticals,revenue_growth,primary
+Pharmaceuticals,net_profit_margin,primary
+Pharmaceuticals,operating_margin,primary
+Pharmaceuticals,debt_to_equity,secondary
+Pharmaceuticals,free_cash_flow,primary
+
+Hospitals,roe,primary
+Hospitals,revenue_growth,primary
+Hospitals,net_profit_margin,primary
+Hospitals,operating_margin,primary
+Hospitals,debt_to_equity,secondary
+Hospitals,free_cash_flow,primary
+
+Automobiles,roe,primary
+Automobiles,revenue_growth,primary
+Automobiles,net_profit_margin,primary
+Automobiles,operating_margin,primary
+Automobiles,debt_to_equity,primary
+Automobiles,free_cash_flow,primary
+
+FMCG,roe,primary
+FMCG,revenue_growth,primary
+FMCG,net_profit_margin,primary
+FMCG,operating_margin,primary
+FMCG,debt_to_equity,secondary
+FMCG,free_cash_flow,primary
+
+Steel,roe,primary
+Steel,revenue_growth,primary
+Steel,net_profit_margin,primary
+Steel,operating_margin,primary
+Steel,debt_to_equity,primary
+Steel,free_cash_flow,primary
+
+Non-Ferrous Metals,roe,primary
+Non-Ferrous Metals,revenue_growth,primary
+Non-Ferrous Metals,net_profit_margin,primary
+Non-Ferrous Metals,operating_margin,primary
+Non-Ferrous Metals,debt_to_equity,primary
+Non-Ferrous Metals,free_cash_flow,primary
+
+Diversified Materials,roe,primary
+Diversified Materials,revenue_growth,primary
+Diversified Materials,net_profit_margin,primary
+Diversified Materials,operating_margin,primary
+Diversified Materials,debt_to_equity,primary
+Diversified Materials,free_cash_flow,primary
+
+Conglomerate / Infrastructure,roe,primary
+Conglomerate / Infrastructure,revenue_growth,primary
+Conglomerate / Infrastructure,net_profit_margin,primary
+Conglomerate / Infrastructure,operating_margin,primary
+Conglomerate / Infrastructure,debt_to_equity,primary
+Conglomerate / Infrastructure,free_cash_flow,primary
+
+Ports & Logistics,roe,primary
+Ports & Logistics,revenue_growth,primary
+Ports & Logistics,net_profit_margin,primary
+Ports & Logistics,operating_margin,primary
+Ports & Logistics,debt_to_equity,primary
+Ports & Logistics,free_cash_flow,primary
+
+Paints,roe,primary
+Paints,revenue_growth,primary
+Paints,net_profit_margin,primary
+Paints,operating_margin,primary
+Paints,debt_to_equity,secondary
+Paints,free_cash_flow,primary
+
+Defence Electronics,roe,primary
+Defence Electronics,revenue_growth,primary
+Defence Electronics,net_profit_margin,primary
+Defence Electronics,operating_margin,primary
+Defence Electronics,debt_to_equity,secondary
+Defence Electronics,free_cash_flow,primary
+
+Telecom,roe,primary
+Telecom,revenue_growth,primary
+Telecom,net_profit_margin,primary
+Telecom,operating_margin,primary
+Telecom,debt_to_equity,primary
+Telecom,free_cash_flow,primary
+
+Coal,roe,primary
+Coal,revenue_growth,primary
+Coal,net_profit_margin,primary
+Coal,operating_margin,primary
+Coal,debt_to_equity,primary
+Coal,free_cash_flow,primary
+
+Internet / Consumer Services,roe,primary
+Internet / Consumer Services,revenue_growth,primary
+Internet / Consumer Services,net_profit_margin,primary
+Internet / Consumer Services,operating_margin,primary
+Internet / Consumer Services,debt_to_equity,secondary
+Internet / Consumer Services,free_cash_flow,primary
+
+Airline,roe,primary
+Airline,revenue_growth,primary
+Airline,net_profit_margin,primary
+Airline,operating_margin,primary
+Airline,debt_to_equity,primary
+Airline,free_cash_flow,primary
+
+Engineering & Construction,roe,primary
+Engineering & Construction,revenue_growth,primary
+Engineering & Construction,net_profit_margin,primary
+Engineering & Construction,operating_margin,primary
+Engineering & Construction,debt_to_equity,primary
+Engineering & Construction,free_cash_flow,primary
+
+Power Generation,roe,primary
+Power Generation,revenue_growth,primary
+Power Generation,net_profit_margin,primary
+Power Generation,operating_margin,primary
+Power Generation,debt_to_equity,primary
+Power Generation,free_cash_flow,primary
+
+Oil & Gas,roe,primary
+Oil & Gas,revenue_growth,primary
+Oil & Gas,net_profit_margin,primary
+Oil & Gas,operating_margin,primary
+Oil & Gas,debt_to_equity,primary
+Oil & Gas,free_cash_flow,primary
+
+Power Transmission,roe,primary
+Power Transmission,revenue_growth,primary
+Power Transmission,net_profit_margin,primary
+Power Transmission,operating_margin,primary
+Power Transmission,debt_to_equity,primary
+Power Transmission,free_cash_flow,primary
+
+Integrated Energy,roe,primary
+Integrated Energy,revenue_growth,primary
+Integrated Energy,net_profit_margin,primary
+Integrated Energy,operating_margin,primary
+Integrated Energy,debt_to_equity,primary
+Integrated Energy,free_cash_flow,primary
+
+Consumer Products,roe,primary
+Consumer Products,revenue_growth,primary
+Consumer Products,net_profit_margin,primary
+Consumer Products,operating_margin,primary
+Consumer Products,debt_to_equity,secondary
+Consumer Products,free_cash_flow,primary
+
+Retail,roe,primary
+Retail,revenue_growth,primary
+Retail,net_profit_margin,primary
+Retail,operating_margin,primary
+Retail,debt_to_equity,primary
+Retail,free_cash_flow,primary
+
+Cement,roe,primary
+Cement,revenue_growth,primary
+Cement,net_profit_margin,primary
+Cement,operating_margin,primary
+Cement,debt_to_equity,primary
+Cement,free_cash_flow,primary
