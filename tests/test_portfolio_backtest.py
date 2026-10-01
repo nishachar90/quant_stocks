@@ -1,5 +1,3 @@
-# tests/test_portfolio_backtest.py
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -150,6 +148,35 @@ def test_drawdown_never_positive():
     ).all()
 
 
+def test_buy_and_hold_has_zero_turnover():
+    result = calculate_buy_and_hold_backtest(
+        sample_prices(),
+        sample_portfolio(),
+    )
+
+    assert np.allclose(
+        result["turnover"],
+        0.0,
+    )
+
+
+def test_buy_and_hold_has_zero_transaction_cost():
+    config = PortfolioBacktestConfig(
+        transaction_cost_bps=25
+    )
+
+    result = calculate_buy_and_hold_backtest(
+        sample_prices(),
+        sample_portfolio(),
+        config,
+    )
+
+    assert np.allclose(
+        result["transaction_cost"],
+        0.0,
+    )
+
+
 def test_rebalanced_backtest():
     result = calculate_rebalanced_backtest(
         sample_prices(),
@@ -160,6 +187,68 @@ def test_rebalanced_backtest():
     assert np.isclose(
         result["portfolio_value"].iloc[0],
         1_000_000,
+    )
+
+
+def test_rebalanced_zero_cost_matches_gross_path():
+    result = calculate_rebalanced_backtest(
+        sample_prices(),
+        sample_portfolio(),
+        PortfolioBacktestConfig(
+            transaction_cost_bps=0
+        ),
+    )
+
+    assert np.all(
+        result["portfolio_value"] > 0
+    )
+
+    assert np.isclose(
+        result["transaction_cost"].sum(),
+        0.0,
+    )
+
+
+def test_transaction_costs_are_nonzero():
+    result = calculate_rebalanced_backtest(
+        sample_prices(),
+        sample_portfolio(),
+        PortfolioBacktestConfig(
+            transaction_cost_bps=25
+        ),
+    )
+
+    assert (
+        result["transaction_cost"].sum()
+        > 0
+    )
+
+    assert (
+        result["turnover"].iloc[1:].sum()
+        > 0
+    )
+
+
+def test_transaction_costs_reduce_terminal_value():
+    zero_cost = calculate_rebalanced_backtest(
+        sample_prices(),
+        sample_portfolio(),
+        PortfolioBacktestConfig(
+            transaction_cost_bps=0
+        ),
+    )
+
+    cost = calculate_rebalanced_backtest(
+        sample_prices(),
+        sample_portfolio(),
+        PortfolioBacktestConfig(
+            transaction_cost_bps=100
+        ),
+    )
+
+    assert (
+        cost["portfolio_value"].iloc[-1]
+        < zero_cost["portfolio_value"].iloc[-1]
     )
 
 
@@ -231,6 +320,8 @@ def test_metrics_are_generated():
         "sortino_ratio",
         "maximum_drawdown",
         "trading_observations",
+        "total_turnover",
+        "total_transaction_cost",
     }
 
     assert expected.issubset(
@@ -265,7 +356,7 @@ def test_summary_dataframe():
         metrics
     )
 
-    assert summary.shape == (1, 9)
+    assert summary.shape == (1, 11)
 
 
 def test_invalid_initial_capital():

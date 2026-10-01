@@ -1,5 +1,3 @@
-# src/analysis/portfolio_backtest.py
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -110,7 +108,6 @@ def load_price_data(
     series = []
 
     for symbol in symbols:
-
         cache_path = (
             cache_dir
             / (
@@ -298,6 +295,8 @@ def calculate_buy_and_hold_backtest(
             "daily_return": daily_return,
             "cumulative_return": cumulative_return,
             "drawdown": drawdown,
+            "turnover": 0.0,
+            "transaction_cost": 0.0,
         }
     )
 
@@ -341,50 +340,181 @@ def calculate_rebalanced_backtest(
         prices[symbols]
     )
 
-    returns = prices.pct_change()
-
-    returns = returns.fillna(0.0)
-
-    weights = (
+    target_weights = (
         holdings
         .set_index("symbol")["weight"]
         .reindex(symbols)
+        .to_numpy(dtype=float)
     )
 
-    portfolio_return = returns.mul(
-        weights,
-        axis=1,
-    ).sum(axis=1)
+    returns = prices.pct_change()
 
-    portfolio_value = (
+    returns = returns.replace(
+        [np.inf, -np.inf],
+        np.nan,
+    ).fillna(0.0)
+
+    portfolio_value = np.zeros(
+        len(prices),
+        dtype=float,
+    )
+
+    daily_return = np.zeros(
+        len(prices),
+        dtype=float,
+    )
+
+    cumulative_return = np.zeros(
+        len(prices),
+        dtype=float,
+    )
+
+    drawdown = np.zeros(
+        len(prices),
+        dtype=float,
+    )
+
+    turnover = np.zeros(
+        len(prices),
+        dtype=float,
+    )
+
+    transaction_cost = np.zeros(
+        len(prices),
+        dtype=float,
+    )
+
+    asset_values = np.zeros(
+        (
+            len(prices),
+            len(symbols),
+        ),
+        dtype=float,
+    )
+
+    portfolio_value[0] = (
         config.initial_capital
-        * (1.0 + portfolio_return).cumprod()
     )
 
-    cumulative_return = (
-        portfolio_value
-        / config.initial_capital
-        - 1.0
+    asset_values[0] = (
+        config.initial_capital
+        * target_weights
     )
 
-    running_max = (
-        portfolio_value
-        .cummax()
-    )
+    for t in range(1, len(prices)):
 
-    drawdown = (
-        portfolio_value
-        / running_max
-        - 1.0
-    )
+        previous_value = (
+            portfolio_value[t - 1]
+        )
+
+        previous_asset_values = (
+            asset_values[t - 1]
+        )
+
+        previous_weights = (
+            previous_asset_values
+            / previous_value
+        )
+
+        daily_asset_returns = (
+            returns.iloc[t]
+            .reindex(symbols)
+            .to_numpy(dtype=float)
+        )
+
+        gross_asset_values = (
+            previous_asset_values
+            * (1.0 + daily_asset_returns)
+        )
+
+        gross_portfolio_value = (
+            gross_asset_values.sum()
+        )
+
+        if gross_portfolio_value <= 0:
+            raise ValueError(
+                "Portfolio value became non-positive."
+            )
+
+        gross_daily_return = (
+            gross_portfolio_value
+            / previous_value
+            - 1.0
+        )
+
+        pre_rebalance_weights = (
+            gross_asset_values
+            / gross_portfolio_value
+        )
+
+        turnover[t] = (
+            np.abs(
+                target_weights
+                - pre_rebalance_weights
+            ).sum()
+            / 2.0
+        )
+
+        transaction_cost[t] = (
+            gross_portfolio_value
+            * turnover[t]
+            * config.transaction_cost_bps
+            / 10_000.0
+        )
+
+        net_portfolio_value = (
+            gross_portfolio_value
+            - transaction_cost[t]
+        )
+
+        if net_portfolio_value <= 0:
+            raise ValueError(
+                "Portfolio value became non-positive "
+                "after transaction costs."
+            )
+
+        portfolio_value[t] = (
+            net_portfolio_value
+        )
+
+        daily_return[t] = (
+            net_portfolio_value
+            / previous_value
+            - 1.0
+        )
+
+        asset_values[t] = (
+            net_portfolio_value
+            * target_weights
+        )
+
+        cumulative_return[t] = (
+            net_portfolio_value
+            / config.initial_capital
+            - 1.0
+        )
+
+        running_max = (
+            portfolio_value[: t + 1]
+            .max()
+        )
+
+        drawdown[t] = (
+            net_portfolio_value
+            / running_max
+            - 1.0
+        )
 
     result = pd.DataFrame(
         {
             "portfolio_value": portfolio_value,
-            "daily_return": portfolio_return,
+            "daily_return": daily_return,
             "cumulative_return": cumulative_return,
             "drawdown": drawdown,
-        }
+            "turnover": turnover,
+            "transaction_cost": transaction_cost,
+        },
+        index=prices.index,
     )
 
     return result
@@ -432,11 +562,6 @@ def calculate_backtest_metrics(
         portfolio_value.iloc[-1]
     )
 
-    total_return = (
-        end_value / start_value
-        - 1.0
-    )
-
     elapsed_days = (
         portfolio_value.index[-1]
         - portfolio_value.index[0]
@@ -446,6 +571,11 @@ def calculate_backtest_metrics(
         elapsed_days / 365.25
         if elapsed_days > 0
         else np.nan
+    )
+
+    total_return = (
+        end_value / start_value
+        - 1.0
     )
 
     cagr = (
@@ -496,6 +626,18 @@ def calculate_backtest_metrics(
         backtest["drawdown"].min()
     )
 
+    total_turnover = float(
+        backtest["turnover"].sum()
+        if "turnover" in backtest.columns
+        else 0.0
+    )
+
+    total_transaction_cost = float(
+        backtest["transaction_cost"].sum()
+        if "transaction_cost" in backtest.columns
+        else 0.0
+    )
+
     return {
         "start_value": start_value,
         "end_value": end_value,
@@ -508,6 +650,8 @@ def calculate_backtest_metrics(
         "trading_observations": float(
             len(backtest)
         ),
+        "total_turnover": total_turnover,
+        "total_transaction_cost": total_transaction_cost,
     }
 
 
@@ -535,6 +679,12 @@ def generate_backtest_summary(
                 ],
                 "trading_observations": metrics[
                     "trading_observations"
+                ],
+                "total_turnover": metrics[
+                    "total_turnover"
+                ],
+                "total_transaction_cost": metrics[
+                    "total_transaction_cost"
                 ],
             }
         ]
@@ -601,5 +751,14 @@ def print_backtest_audit(
         f"{metrics['maximum_drawdown']:.2%}"
     )
 
-    print()
+    print(
+        f"Total turnover: "
+        f"{metrics['total_turnover']:.6f}"
+    )
+
+    print(
+        f"Total transaction cost: "
+        f"₹{metrics['total_transaction_cost']:,.2f}"
+    )
+
     print("=" * 70)
