@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from scripts.generate_portfolio_evaluation import (
     evaluate_strategy,
@@ -7,144 +6,112 @@ from scripts.generate_portfolio_evaluation import (
 )
 
 
-def test_load_backtest(tmp_path):
-    """Verify that a backtest file loads correctly."""
+def test_load_backtest():
+    """Verify that the portfolio backtest loads successfully."""
 
-    path = tmp_path / "backtest.csv"
+    backtest = load_backtest()
 
-    dataframe = pd.DataFrame(
-        {
-            "date": [
-                "2025-01-01",
-                "2025-01-02",
-            ],
-            "portfolio_value": [
-                100.0,
-                110.0,
-            ],
-            "daily_return": [
-                0.0,
-                0.10,
-            ],
-            "cumulative_return": [
-                0.0,
-                0.10,
-            ],
-            "drawdown": [
-                0.0,
-                0.0,
-            ],
-        }
-    )
-
-    dataframe.to_csv(
-        path,
-        index=False,
-    )
-
-    result = load_backtest()
-
-    assert result is not None
-
-
-def test_load_backtest_missing_file():
-    """Verify that the configured backtest file exists."""
-
-    result = load_backtest()
-
-    assert not result.empty
+    assert isinstance(backtest, pd.DataFrame)
+    assert not backtest.empty
+    assert "date" in backtest.columns
+    assert "portfolio_value" in backtest.columns
+    assert "daily_return" in backtest.columns
 
 
 def test_evaluate_strategy():
-    """Verify evaluation of a portfolio strategy."""
+    """Verify successful portfolio evaluation and attribution outputs."""
 
-    dates = pd.date_range(
-        "2025-01-01",
-        periods=3,
+    backtest = load_backtest()
+
+    portfolio = pd.DataFrame(
+        {
+            "symbol": ["RELIANCE", "TITAN"],
+            "weight": [0.60, 0.40],
+        }
     )
 
-    backtest = pd.DataFrame(
+    classification = pd.DataFrame(
         {
-            "date": dates,
-            "portfolio_value": [
-                100.0,
-                110.0,
-                121.0,
+            "symbol": ["RELIANCE", "TITAN"],
+            "sector": [
+                "Oil Gas & Consumable Fuels",
+                "Consumer Durables",
             ],
-            "daily_return": [
-                0.0,
-                0.10,
-                0.10,
+            "business_type": [
+                "Integrated Energy",
+                "Jewellery",
             ],
-            "cumulative_return": [
-                0.0,
-                0.10,
-                0.21,
-            ],
-            "drawdown": [
-                0.0,
-                0.0,
-                0.0,
-            ],
-            "strategy": [
-                "test_strategy",
-                "test_strategy",
-                "test_strategy",
+            "peer_group": [
+                "Integrated Energy",
+                "Jewellery",
             ],
         }
     )
 
     benchmark = pd.DataFrame(
         {
-            "Close": [
-                100.0,
-                105.0,
-                110.0,
-            ],
+            "Close": [100.0, 101.0, 102.0],
         }
     )
 
-    portfolio = pd.DataFrame(
-        {
-            "symbol": [
-                "AAA",
-                "BBB",
-            ],
-            "weight": [
-                0.60,
-                0.40,
-            ],
-        }
+    result = evaluate_strategy(
+        backtest=backtest,
+        benchmark=benchmark,
+        portfolio=portfolio,
+        classification=classification,
+        strategy="test_strategy",
     )
 
-    classification = pd.DataFrame(
-        {
-            "symbol": [
-                "AAA",
-                "BBB",
-            ],
-            "sector": [
-                "Technology",
-                "Financial Services",
-            ],
-            "business_type": [
-                "Technology",
-                "Bank",
-            ],
-            "peer_group": [
-                "Technology",
-                "Bank",
-            ],
-        }
+    assert isinstance(result, tuple)
+    assert len(result) == 4
+
+    performance = result[0]
+    security_attribution = result[1]
+    sector_attribution = result[2]
+    peer_group_attribution = result[3]
+
+    assert isinstance(
+        performance,
+        pd.DataFrame,
     )
 
-    with pytest.raises(
-        Exception
-    ):
-        evaluate_strategy(
-            backtest=backtest,
-            benchmark=benchmark,
-            portfolio=portfolio,
-            classification=classification,
-            strategy="test_strategy",
-        )
+    assert isinstance(
+        security_attribution,
+        pd.DataFrame,
+    )
+
+    assert isinstance(
+        sector_attribution,
+        pd.DataFrame,
+    )
+
+    assert isinstance(
+        peer_group_attribution,
+        pd.DataFrame,
+    )
+
+    assert not performance.empty
+    assert not security_attribution.empty
+    assert not sector_attribution.empty
+    assert not peer_group_attribution.empty
+
+    assert "total_return" in performance.columns
+    assert "cagr" in performance.columns
+    assert "sharpe_ratio" in performance.columns
+    assert "sortino_ratio" in performance.columns
+    assert "maximum_drawdown" in performance.columns
+    assert "excess_total_return" in performance.columns
+    assert "beta" in performance.columns
+    assert "correlation" in performance.columns
+
+    assert "symbol" in security_attribution.columns
+    assert "return" in security_attribution.columns
+    assert "return_contribution" in security_attribution.columns
+
+    assert "sector" in sector_attribution.columns
+    assert "return" in sector_attribution.columns
+    assert "return_contribution" in sector_attribution.columns
+
+    assert "peer_group" in peer_group_attribution.columns
+    assert "return" in peer_group_attribution.columns
+    assert "return_contribution" in peer_group_attribution.columns
