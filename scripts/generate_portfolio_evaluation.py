@@ -6,9 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.analysis.performance_evaluation import (
-    evaluate_performance,
-)
+from src.analysis.performance_evaluation import evaluate_performance
 from src.analysis.portfolio_attribution import (
     calculate_peer_group_attribution,
     calculate_security_attribution,
@@ -18,114 +16,288 @@ from src.analysis.portfolio_attribution import (
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
+DATA_DIR = BASE_DIR / "data"
+ANALYSIS_DIR = DATA_DIR / "analysis"
+REFERENCE_DIR = DATA_DIR / "reference"
+CACHE_DIR = DATA_DIR / "cache"
 
-BACKTEST_FILE = (
-    BASE_DIR
-    / "data"
-    / "analysis"
-    / "nifty50_portfolio_backtest.csv"
-)
 
-BENCHMARK_FILE = (
-    BASE_DIR
-    / "data"
-    / "analysis"
-    / "nifty50_portfolio_benchmark_comparison.csv"
-)
+BACKTEST_FILES = {
+    "buy_and_hold": (
+        ANALYSIS_DIR
+        / "nifty50_portfolio_backtest.csv"
+    ),
+    "rebalanced": (
+        ANALYSIS_DIR
+        / "nifty50_portfolio_rebalanced_backtest.csv"
+    ),
+}
+
 
 PORTFOLIO_FILE = (
-    BASE_DIR
-    / "data"
-    / "analysis"
+    ANALYSIS_DIR
     / "nifty50_portfolio.csv"
 )
 
 CLASSIFICATION_FILE = (
-    BASE_DIR
-    / "data"
-    / "reference"
+    REFERENCE_DIR
     / "nifty50_classification.csv"
 )
 
 PEER_GROUP_FILE = (
-    BASE_DIR
-    / "data"
-    / "reference"
+    REFERENCE_DIR
     / "peer_groups.csv"
 )
 
 
-OUTPUT_DIR = BASE_DIR / "data" / "analysis"
+BENCHMARK_SYMBOL = "^NSEI"
+
+BENCHMARK_CACHE_FILE = (
+    CACHE_DIR
+    / "^NSEI__2016-09-29__2026-09-27__adjusted.csv"
+)
 
 
 PERFORMANCE_OUTPUT_FILE = (
-    OUTPUT_DIR
+    ANALYSIS_DIR
     / "nifty50_portfolio_performance_evaluation.csv"
 )
 
 SECURITY_ATTRIBUTION_OUTPUT_FILE = (
-    OUTPUT_DIR
+    ANALYSIS_DIR
     / "nifty50_portfolio_security_attribution.csv"
 )
 
 SECTOR_ATTRIBUTION_OUTPUT_FILE = (
-    OUTPUT_DIR
+    ANALYSIS_DIR
     / "nifty50_portfolio_sector_attribution.csv"
 )
 
 PEER_GROUP_ATTRIBUTION_OUTPUT_FILE = (
-    OUTPUT_DIR
+    ANALYSIS_DIR
     / "nifty50_portfolio_peer_group_attribution.csv"
 )
 
 
-def load_backtest() -> pd.DataFrame:
-    """Load portfolio backtest data."""
+def load_backtest(
+    strategy: str = "buy_and_hold",
+) -> pd.DataFrame:
+    """Load portfolio backtest data for one strategy."""
 
-    if not BACKTEST_FILE.exists():
-        raise FileNotFoundError(
-            f"Backtest file not found: {BACKTEST_FILE}"
-        )
-
-    backtest = pd.read_csv(BACKTEST_FILE)
-
-    if "Date" in backtest.columns and "date" not in backtest.columns:
-        backtest = backtest.rename(
-            columns={"Date": "date"}
-        )
-
-    if "date" not in backtest.columns:
+    if strategy not in BACKTEST_FILES:
         raise ValueError(
-            "Backtest must contain a date column."
+            f"Unknown strategy: {strategy}"
         )
 
-    backtest["date"] = pd.to_datetime(
-        backtest["date"]
+    backtest_file = BACKTEST_FILES[strategy]
+
+    if not backtest_file.exists():
+        raise FileNotFoundError(
+            f"Backtest file not found: {backtest_file}"
+        )
+
+    backtest = pd.read_csv(
+        backtest_file,
+        index_col=0,
+        parse_dates=True,
     )
+
+    if backtest.empty:
+        raise ValueError(
+            f"Backtest file is empty: {backtest_file}"
+        )
+
+    required_columns = {
+        "portfolio_value",
+        "daily_return",
+        "cumulative_return",
+        "drawdown",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(backtest.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Backtest is missing required columns: "
+            f"{sorted(missing_columns)}"
+        )
+
+    if not isinstance(
+        backtest.index,
+        pd.DatetimeIndex,
+    ):
+        raise ValueError(
+            "Backtest index must be a DatetimeIndex."
+        )
+
+    backtest.index = pd.to_datetime(
+        backtest.index
+    )
+
+    if backtest.index.tz is not None:
+        backtest.index = (
+            backtest.index.tz_localize(None)
+        )
 
     return backtest
 
 
-def load_benchmark() -> pd.DataFrame:
-    """Load benchmark comparison data."""
+def load_benchmark(
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+) -> pd.DataFrame:
+    """Load and slice the existing full-range NIFTY 50 benchmark cache."""
 
-    if not BENCHMARK_FILE.exists():
+    if not BENCHMARK_CACHE_FILE.exists():
         raise FileNotFoundError(
-            f"Benchmark file not found: {BENCHMARK_FILE}"
+            f"Benchmark cache not found: "
+            f"{BENCHMARK_CACHE_FILE}"
         )
 
-    return pd.read_csv(BENCHMARK_FILE)
+    benchmark = pd.read_csv(
+        BENCHMARK_CACHE_FILE,
+        index_col=0,
+        parse_dates=True,
+    )
+
+    if benchmark.empty:
+        raise ValueError(
+            "Benchmark data cannot be empty."
+        )
+
+    if "Close" not in benchmark.columns:
+        raise ValueError(
+            "Benchmark must contain a Close column."
+        )
+
+    benchmark.index = pd.to_datetime(
+        benchmark.index
+    )
+
+    if benchmark.index.tz is not None:
+        benchmark.index = (
+            benchmark.index.tz_localize(None)
+        )
+
+    start_date = pd.Timestamp(
+        start_date
+    ).normalize()
+
+    end_date = pd.Timestamp(
+        end_date
+    ).normalize()
+
+    benchmark = benchmark.loc[
+        (benchmark.index >= start_date)
+        & (benchmark.index <= end_date)
+    ].copy()
+
+    if benchmark.empty:
+        raise ValueError(
+            "No benchmark data available for the "
+            f"requested date range: "
+            f"{start_date.date()} to {end_date.date()}"
+        )
+
+    return benchmark
 
 
 def load_portfolio() -> pd.DataFrame:
-    """Load portfolio holdings."""
+    """Load the selected portfolio holdings."""
 
     if not PORTFOLIO_FILE.exists():
         raise FileNotFoundError(
             f"Portfolio file not found: {PORTFOLIO_FILE}"
         )
 
-    return pd.read_csv(PORTFOLIO_FILE)
+    portfolio = pd.read_csv(
+        PORTFOLIO_FILE
+    )
+
+    if portfolio.empty:
+        raise ValueError(
+            "Portfolio cannot be empty."
+        )
+
+    required_columns = {
+        "symbol",
+        "weight",
+        "selected",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(portfolio.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Portfolio is missing required columns: "
+            f"{sorted(missing_columns)}"
+        )
+
+    portfolio["symbol"] = (
+        portfolio["symbol"]
+        .astype(str)
+        .str.strip()
+    )
+
+    selected_values = (
+        portfolio["selected"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+
+    portfolio = portfolio.loc[
+        selected_values.isin(
+            {"true", "1", "yes"}
+        )
+    ].copy()
+
+    if portfolio.empty:
+        raise ValueError(
+            "Portfolio contains no selected holdings."
+        )
+
+    portfolio["weight"] = pd.to_numeric(
+        portfolio["weight"],
+        errors="coerce",
+    )
+
+    if portfolio["weight"].isna().any():
+        raise ValueError(
+            "Selected portfolio contains invalid weights."
+        )
+
+    if (portfolio["weight"] <= 0).any():
+        raise ValueError(
+            "Selected portfolio weights must be positive."
+        )
+
+    duplicate_symbols = (
+        portfolio["symbol"]
+        .duplicated()
+    )
+
+    if duplicate_symbols.any():
+        duplicates = (
+            portfolio.loc[
+                duplicate_symbols,
+                "symbol",
+            ]
+            .tolist()
+        )
+
+        raise ValueError(
+            "Selected portfolio contains duplicate symbols: "
+            f"{duplicates}"
+        )
+
+    return portfolio
 
 
 def load_classification() -> pd.DataFrame:
@@ -133,12 +305,14 @@ def load_classification() -> pd.DataFrame:
 
     if not CLASSIFICATION_FILE.exists():
         raise FileNotFoundError(
-            f"Classification file not found: {CLASSIFICATION_FILE}"
+            f"Classification file not found: "
+            f"{CLASSIFICATION_FILE}"
         )
 
     if not PEER_GROUP_FILE.exists():
         raise FileNotFoundError(
-            f"Peer-group file not found: {PEER_GROUP_FILE}"
+            f"Peer-group file not found: "
+            f"{PEER_GROUP_FILE}"
         )
 
     classification = pd.read_csv(
@@ -162,7 +336,7 @@ def load_classification() -> pd.DataFrame:
 
     if missing_classification_columns:
         raise ValueError(
-            "classification is missing required columns: "
+            "Classification is missing required columns: "
             f"{sorted(missing_classification_columns)}"
         )
 
@@ -178,9 +352,15 @@ def load_classification() -> pd.DataFrame:
 
     if missing_peer_group_columns:
         raise ValueError(
-            "peer_groups is missing required columns: "
+            "Peer groups are missing required columns: "
             f"{sorted(missing_peer_group_columns)}"
         )
+
+    classification["symbol"] = (
+        classification["symbol"]
+        .astype(str)
+        .str.strip()
+    )
 
     classification = classification.merge(
         peer_groups,
@@ -211,33 +391,14 @@ def build_security_returns(
     portfolio: pd.DataFrame,
     backtest: pd.DataFrame,
 ) -> pd.Series:
-    """Calculate total-period return for every portfolio security."""
-
-    required_columns = {
-        "symbol",
-        "weight",
-    }
-
-    missing = (
-        required_columns
-        - set(portfolio.columns)
-    )
-
-    if missing:
-        raise ValueError(
-            "Portfolio is missing required columns: "
-            f"{sorted(missing)}"
-        )
-
-    if "date" not in backtest.columns:
-        raise ValueError(
-            "Backtest must contain a date column."
-        )
+    """Calculate total-period return for each portfolio security."""
 
     security_returns = {}
 
     for symbol in portfolio["symbol"]:
-        value_column = f"value_{symbol}.NS"
+        symbol = str(symbol).strip()
+
+        value_column = f"value_{symbol}"
 
         if value_column not in backtest.columns:
             raise ValueError(
@@ -268,7 +429,7 @@ def build_security_returns(
                 f"Invalid starting value for {symbol}."
             )
 
-        security_returns[str(symbol)] = (
+        security_returns[symbol] = (
             last_value / first_value
         ) - 1.0
 
@@ -281,32 +442,29 @@ def build_security_returns(
 def evaluate_strategy(
     backtest: pd.DataFrame,
     benchmark: pd.DataFrame,
-    portfolio: pd.DataFrame,
-    classification: pd.DataFrame,
-    strategy: str,
-):
-    """Evaluate one portfolio strategy."""
-
-    strategy_backtest = backtest.copy()
-
-    if "strategy" in strategy_backtest.columns:
-        strategy_backtest = strategy_backtest[
-            strategy_backtest["strategy"] == strategy
-        ].copy()
-
-    if strategy_backtest.empty:
-        raise ValueError(
-            f"No backtest data found for strategy: {strategy}"
-        )
+) -> pd.DataFrame:
+    """Evaluate portfolio performance for one strategy."""
 
     performance = evaluate_performance(
-        portfolio=strategy_backtest,
+        portfolio=backtest,
         benchmark=benchmark,
     )
 
+    return pd.DataFrame(
+        [performance]
+    )
+
+
+def calculate_attribution_outputs(
+    portfolio: pd.DataFrame,
+    classification: pd.DataFrame,
+    backtest: pd.DataFrame,
+):
+    """Calculate attribution outputs for the buy-and-hold strategy."""
+
     security_returns = build_security_returns(
         portfolio=portfolio,
-        backtest=strategy_backtest,
+        backtest=backtest,
     )
 
     security_attribution = calculate_security_attribution(
@@ -328,7 +486,6 @@ def evaluate_strategy(
     )
 
     return (
-        pd.DataFrame([performance]),
         security_attribution,
         sector_attribution,
         peer_group_attribution,
@@ -342,88 +499,69 @@ def main() -> None:
     print("NIFTY 50 PORTFOLIO EVALUATION")
     print("=" * 70)
 
-    backtest = load_backtest()
-    benchmark = load_benchmark()
     portfolio = load_portfolio()
+
     classification = load_classification()
+
+    buy_and_hold_backtest = load_backtest(
+        strategy="buy_and_hold"
+    )
+
+    start_date = buy_and_hold_backtest.index.min()
+    end_date = buy_and_hold_backtest.index.max()
+
+    benchmark = load_benchmark(
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     print()
     print("INPUT")
     print(f"Holdings: {len(portfolio)}")
-    print(f"Start date: {backtest['date'].min()}")
-    print(f"End date: {backtest['date'].max()}")
-
-    print()
-
-    strategies = [
-        "buy_and_hold",
-        "rebalanced",
-    ]
+    print(f"Start date: {start_date}")
+    print(f"End date: {end_date}")
 
     performance_outputs = []
-    security_outputs = []
-    sector_outputs = []
-    peer_group_outputs = []
 
-    for strategy in strategies:
+    for strategy in BACKTEST_FILES:
+        backtest = load_backtest(
+            strategy=strategy
+        )
+
+        print()
         print(f"Evaluating: {strategy}")
 
-        (
-            performance,
-            security_attribution,
-            sector_attribution,
-            peer_group_attribution,
-        ) = evaluate_strategy(
+        performance = evaluate_strategy(
             backtest=backtest,
             benchmark=benchmark,
-            portfolio=portfolio,
-            classification=classification,
-            strategy=strategy,
         )
 
         performance["strategy"] = strategy
-
-        security_attribution["strategy"] = strategy
-
-        sector_attribution["strategy"] = strategy
-
-        peer_group_attribution["strategy"] = strategy
 
         performance_outputs.append(
             performance
         )
 
-        security_outputs.append(
-            security_attribution
-        )
+    (
+        security_attribution,
+        sector_attribution,
+        peer_group_attribution,
+    ) = calculate_attribution_outputs(
+        portfolio=portfolio,
+        classification=classification,
+        backtest=buy_and_hold_backtest,
+    )
 
-        sector_outputs.append(
-            sector_attribution
-        )
-
-        peer_group_outputs.append(
-            peer_group_attribution
-        )
+    security_attribution["strategy"] = "buy_and_hold"
+    sector_attribution["strategy"] = "buy_and_hold"
+    peer_group_attribution["strategy"] = "buy_and_hold"
 
     performance_output = pd.concat(
         performance_outputs,
         ignore_index=True,
     )
 
-    security_output = pd.concat(
-        security_outputs,
-        ignore_index=True,
-    )
-
-    sector_output = pd.concat(
-        sector_outputs,
-        ignore_index=True,
-    )
-
-    peer_group_output = pd.concat(
-        peer_group_outputs,
-        ignore_index=True,
-    )
+    OUTPUT_DIR = ANALYSIS_DIR
 
     OUTPUT_DIR.mkdir(
         parents=True,
@@ -435,17 +573,17 @@ def main() -> None:
         index=False,
     )
 
-    security_output.to_csv(
+    security_attribution.to_csv(
         SECURITY_ATTRIBUTION_OUTPUT_FILE,
         index=False,
     )
 
-    sector_output.to_csv(
+    sector_attribution.to_csv(
         SECTOR_ATTRIBUTION_OUTPUT_FILE,
         index=False,
     )
 
-    peer_group_output.to_csv(
+    peer_group_attribution.to_csv(
         PEER_GROUP_ATTRIBUTION_OUTPUT_FILE,
         index=False,
     )
@@ -476,7 +614,7 @@ def main() -> None:
     print()
     print("SECTOR ATTRIBUTION")
     print(
-        sector_output.to_string(
+        sector_attribution.to_string(
             index=False
         )
     )
@@ -484,7 +622,7 @@ def main() -> None:
     print()
     print("PEER GROUP ATTRIBUTION")
     print(
-        peer_group_output.to_string(
+        peer_group_attribution.to_string(
             index=False
         )
     )

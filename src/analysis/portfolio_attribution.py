@@ -1,3 +1,4 @@
+"""Portfolio Attribution"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -175,7 +176,17 @@ def _prepare_base_attribution(
 ) -> pd.DataFrame:
     """Create internal security-level attribution data."""
 
-    portfolio_data = portfolio.copy()
+    # Keep only the portfolio fields required for attribution.
+    # The portfolio file may already contain columns such as
+    # sector, business_type, peer_group, etc. Keeping only
+    # symbol and weight prevents merge suffixes such as
+    # sector_x / sector_y from being created.
+    portfolio_data = portfolio[
+        [
+            "symbol",
+            "weight",
+        ]
+    ].copy()
 
     portfolio_data["symbol"] = (
         portfolio_data["symbol"]
